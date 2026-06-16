@@ -1,0 +1,242 @@
+from dataclasses import dataclass
+import random
+
+# ==========================================
+# STUDENT CLASS
+# ==========================================
+
+@dataclass
+class Student:
+    hall_ticket: str
+    name: str
+    department: str
+    section: str
+    subject: str
+    special: bool = False
+
+
+# ==========================================
+# EXAM HALL CLASS
+# ==========================================
+
+class Hall:
+    def __init__(self, hall_name, rows, cols):
+        self.hall_name = hall_name
+        self.rows = rows
+        self.cols = cols
+        self.capacity = rows * cols
+        self.seats = [[None for _ in range(cols)] for _ in range(rows)]
+
+    def display(self):
+        print("\n" + "=" * 60)
+        print(f"ROOM : {self.hall_name}")
+        print("=" * 60)
+
+        for r in range(self.rows):
+            for c in range(self.cols):
+                if self.seats[r][c]:
+                    print(
+                        f"{self.seats[r][c].hall_ticket:^12}",
+                        end=""
+                    )
+                else:
+                    print(f"{'EMPTY':^12}", end="")
+            print()
+
+        print("=" * 60)
+
+
+# ==========================================
+# GENERATE STUDENTS
+# ==========================================
+
+def generate_students(n=120):
+
+    departments = ["CSE", "ECE", "EEE", "MECH", "CIVIL"]
+
+    subjects = {
+        "CSE": "CS501",
+        "ECE": "EC402",
+        "EEE": "EE305",
+        "MECH": "ME201",
+        "CIVIL": "CV101"
+    }
+
+    students = []
+
+    for i in range(1, n + 1):
+
+        dept = random.choice(departments)
+
+        student = Student(
+            hall_ticket=f"23{dept[:2]}{1000+i}",
+            name=f"Student{i}",
+            department=dept,
+            section=random.choice(["A", "B", "C"]),
+            subject=subjects[dept],
+            special=random.random() < 0.05
+        )
+
+        students.append(student)
+
+    return students
+
+
+# ==========================================
+# CHECK CSP CONSTRAINTS
+# ==========================================
+
+def valid_seat(hall, row, col, student):
+
+    # left
+    if col > 0 and hall.seats[row][col - 1]:
+
+        left = hall.seats[row][col - 1]
+
+        if left.department == student.department:
+            return False
+
+        if left.subject == student.subject:
+            return False
+
+    # top
+    if row > 0 and hall.seats[row - 1][col]:
+
+        top = hall.seats[row - 1][col]
+
+        if top.department == student.department:
+            return False
+
+        if top.subject == student.subject:
+            return False
+
+    return True
+
+
+# ==========================================
+# DFS + BACKTRACKING
+# ==========================================
+
+def assign_students(halls, students):
+
+    index = 0
+
+    for hall in halls:
+
+        for r in range(hall.rows):
+
+            for c in range(hall.cols):
+
+                if index >= len(students):
+                    return True
+
+                assigned = False
+
+                for i in range(index, len(students)):
+
+                    student = students[i]
+
+                    if valid_seat(hall, r, c, student):
+
+                        hall.seats[r][c] = student
+
+                        students[index], students[i] = (
+                            students[i],
+                            students[index],
+                        )
+
+                        assigned = True
+                        index += 1
+                        break
+
+                if not assigned:
+                    hall.seats[r][c] = None
+
+    return True
+
+
+# ==========================================
+# LOOKUP STUDENT // DFS
+# ==========================================
+
+def lookup_student(halls, hall_ticket):
+
+    for hall in halls:
+
+        for r in range(hall.rows):
+
+            for c in range(hall.cols):
+
+                student = hall.seats[r][c]
+
+                if student and student.hall_ticket == hall_ticket:
+
+                    print("\nStudent Found")
+                    print("-" * 40)
+                    print("Hall :", hall.hall_name)
+                    print("Seat :", f"R{r+1}C{c+1}")
+                    print("Name :", student.name)
+                    print("Department :", student.department)
+                    print("Subject :", student.subject)
+                    return
+
+    print("Student not found")
+
+
+# ==========================================
+# HALL UTILIZATION REPORT
+# ==========================================
+
+def utilization_report(halls):
+
+    print("\nHALL UTILIZATION REPORT")
+    print("=" * 60)
+
+    total = 0
+    occupied = 0
+
+    for hall in halls:
+
+        used = sum(
+            1
+            for row in hall.seats
+            for seat in row
+            if seat is not None
+        )
+
+        total += hall.capacity
+        occupied += used
+
+        print(
+            f"{hall.hall_name:<10}"
+            f" Capacity={hall.capacity:<5}"
+            f" Occupied={used:<5}"
+        )
+
+    print("=" * 60)
+    print("Total Capacity :", total)
+    print("Occupied Seats :", occupied)
+
+
+# ==========================================
+# MAIN
+# ==========================================
+
+students = generate_students(120)
+
+random.shuffle(students)
+
+halls = [
+    Hall("H101", 5, 8),
+    Hall("H102", 5, 8),
+    Hall("H103", 5, 8)
+]
+
+assign_students(halls, students)
+
+for hall in halls:
+    hall.display()
+
+utilization_report(halls)
+
+lookup_student(halls, halls[0].seats[0][0].hall_ticket)
